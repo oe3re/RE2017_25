@@ -1,0 +1,1852 @@
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    09/11/17 14:08:38
+Minesweeper.asm						     Page 1 - 1
+
+
+				INCLUDE Irvine32.inc
+			      C ; Include file for Irvine32.lib             (Irvine32.inc)
+			      C 
+			      C ;OPTION CASEMAP:NONE		; optional: make identifiers case-sensitive
+			      C 
+			      C INCLUDE SmallWin.inc		; MS-Windows prototypes, structures, and constants
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C INCLUDE VirtualKeys.inc
+			      C ; VirtualKeys.inc
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C 
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+ 00000000			.data
+
+				; za postavljanje ekrana
+ 00000000 00000000		outHandle    DWORD ?
+ 00000004 00000000		cellsWritten DWORD ?
+ 00000008 0050 0019		scrSize COORD <80,25>
+ 0000000C 0000 0000		xyPos COORD <0,0>
+ 00000010 4D 69 6E 65 73	titleStr BYTE "Minesweeper",0
+	   77 65 65 70 65
+	   72 00
+ 0000001C 0000 0000 0008	windowRect	SMALL_RECT <0,0,8,8>
+	   0008
+ 00000024 44 61 20 6C 69	questionMsg byte "Da li zelite da napustite igru?", 0
+	   20 7A 65 6C 69
+	   74 65 20 64 61
+	   20 6E 61 70 75
+	   73 74 69 74 65
+	   20 69 67 72 75
+	   3F 00
+ 00000044 50 6F 67 6F 64	gameoverMsg byte "Pogodili te minu. Igra je zavrsena", 0
+	   69 6C 69 20 74
+	   65 20 6D 69 6E
+	   75 2E 20 49 67
+	   72 61 20 6A 65
+	   20 7A 61 76 72
+	   73 65 6E 61 00
+ 00000067 44 61 20 6C 69	newGameMsg byte "Da li zelite da zapocnete novu igru?", 0
+	   20 7A 65 6C 69
+	   74 65 20 64 61
+	   20 7A 61 70 6F
+	   63 6E 65 74 65
+	   20 6E 6F 76 75
+	   20 69 67 72 75
+	   3F 00
+ 0000008C 50 6F 67 6F 64	winMsg byte "Pogodili ste sve mine. Igra je predjena", 0
+	   69 6C 69 20 73
+	   74 65 20 73 76
+	   65 20 6D 69 6E
+	   65 2E 20 49 67
+	   72 61 20 6A 65
+	   20 70 72 65 64
+	   6A 65 6E 61 00
+ 000000B4 49 7A 6C 61 7A	captionQ byte "Izlazak", 0
+	   61 6B 00
+ 000000BC 49 67 72 61 20	captionG byte "Igra zavrsena", 0
+	   7A 61 76 72 73
+	   65 6E 61 00
+ 000000CA 4E 6F 76 61 20	captionNG byte "Nova igra?", 0
+	   69 67 72 61 3F
+	   00
+ 000000D5 50 6F 62 65 64	captionWin byte "Pobeda", 0
+	   61 00
+
+				; za karaktere i boje
+ = 000000B0			karakterPrazan = 0B0h
+ 000000DC 04			kursorX byte 4
+ 000000DD 04			kursorY byte 4
+ = 0000000E			kursorBoja = yellow
+ = 0000000F			pozadinaBoja = white
+ = 00000004			zastavaBoja = red
+ 000000DE 00			trenutnoPolje byte 0
+ 000000DF 04			minaBoja byte red
+ 000000E0 0F			minaKarakter byte 0Fh
+ 000000E1 00			counter byte 0
+ 000000E2 00			dataX byte 0
+ 000000E3 00			dataY byte 0
+ 000000E4 00			kursorXX byte 0
+ 000000E5 00			kursorYY byte 0
+ 000000E6 00			pogodjene byte 0
+
+ 000000E7 00 00 00 00 00	matricaMina byte 0, 0, 0, 0, 0, 0, 0, 1, 0
+	   00 00 01 00
+ 000000F0  00 01 00 00 00				byte 0, 1, 0, 0, 0, 0, 0, 0, 1
+	   00 00 00 01
+ 000000F9  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000102  00 00 00 01 00				byte 0, 0, 0, 1, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 0000010B  01 00 00 00 00				byte 1, 0, 0, 0, 0, 0, 0, 1, 0
+	   00 00 01 00
+ 00000114  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 0000011D  00 01 00 00 00				byte 0, 1, 0, 0, 0, 1, 0, 0, 0
+	   01 00 00 00
+ 00000126  00 00 01 00 00				byte 0, 0, 1, 0, 0, 0, 0, 1, 0
+	   00 00 01 00
+ 0000012F  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+
+ 00000138 00 00 00 00 00	matricaMinaBroj byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000141  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 0000014A  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000153  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 0000015C  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000165  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 0000016E  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000177  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000180  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+
+				; 0 - zatvoreno polje, 1 - otvoreno polje, 2 - zastava
+ 00000189 00 00 00 00 00	matricaMinaPodatak byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 00000192  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 0000019B  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 000001A4  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 000001AD  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 000001B6  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 000001BF  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 000001C8  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+ 000001D1  00 00 00 00 00				byte 0, 0, 0, 0, 0, 0, 0, 0, 0
+	   00 00 00 00
+
+ 00000000			.code
+
+					; ******************************
+					; for loop za popunjavanje ekrana
+					; ******************************
+
+ 00000000			popunjavanjeEkrana PROC
+ 00000000  B8 0000000F				mov eax, pozadinaBoja
+ 00000005  E8 00000000 E			call SetTextColor
+ 0000000A  B5 09				mov ch, 9
+ 0000000C  B1 09				mov cl, 9
+ 0000000E  B6 00				mov dh, 0
+ 00000010  B2 00				mov dl, 0
+ 00000012  B0 B0				mov al, karakterPrazan
+ 00000014				loop2:
+ 00000014				loop1:
+ 00000014  E8 00000000 E			call Gotoxy
+ 00000019  E8 00000000 E			call WriteChar
+ 0000001E  FE C6				inc dh
+ 00000020  3A EE				cmp ch, dh
+ 00000022  75 F0				jnz loop1
+ 00000024  B6 00				mov dh, 0
+ 00000026  FE C2				inc dl
+ 00000028  3A CA				cmp cl, dl
+ 0000002A  75 E8				jnz loop2
+ 0000002C  C3				ret
+ 0000002D			popunjavanjeEkrana endp
+
+					; ******************************
+					; pocetna pozicija kursora
+					; ******************************
+
+ 0000002D			pocetnaPozicijaKursora PROC
+ 0000002D  B8 0000000E				mov eax, kursorBoja
+ 00000032  E8 00000000 E			call SetTextColor
+ 00000037  8A 35 000000DD R			mov dh, kursorY
+ 0000003D  8A 15 000000DC R			mov dl, kursorX
+ 00000043  E8 00000000 E			call Gotoxy
+ 00000048  B0 B0				mov al, karakterPrazan
+ 0000004A  E8 00000000 E			call WriteChar
+ 0000004F  E8 00000000 E			call Crlf ;***
+ 00000054  B8 0000000F				mov eax, pozadinaBoja
+ 00000059  E8 00000000 E			call SetTextColor
+ 0000005E  C3				ret
+ 0000005F			pocetnaPozicijaKursora endp
+
+					; ******************************
+					; broji mine oko jednog polja
+					; ******************************
+
+ 0000005F			izracunavanje PROC
+ 0000005F  B1 09			mov cl, 9
+ 00000061  B5 09			mov ch, 9
+ 00000063  33 DB			xor ebx, ebx
+ 00000065  8A 1D 000000E3 R		mov bl, dataY
+ 0000006B  33 D2			xor edx, edx
+ 0000006D			petlja:
+ 0000006D  03 D3			add edx, ebx
+ 0000006F  FE C9			dec cl
+ 00000071  80 F9 00			cmp cl, 0
+ 00000074  75 F7			jne petlja
+ 00000076  8A 1D 000000E2 R		mov bl, dataX
+ 0000007C  03 D3			add edx, ebx
+ 0000007E  8B F2			mov esi, edx
+
+ 00000080  C3				ret
+ 00000081			izracunavanje endp
+
+					; ******************************
+					; broji mine oko jednog polja
+					; ******************************
+ 00000081			izbrojiMine PROC
+ 00000081  88 2D 000000E2 R			mov dataX, ch
+ 00000087  88 0D 000000E3 R			mov dataY, cl
+ 0000008D  C6 05 000000E1 R			mov counter, 0
+	   00
+						
+ 00000094				LOOPxy0:
+						; x-1, y-1
+ 00000094  FE 0D 000000E2 R			dec dataX
+ 0000009A  FE 0D 000000E3 R			dec dataY
+ 000000A0  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 000000A7  74 31				je LOOPxy1
+ 000000A9  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 000000B0  74 28				je LOOPxy1
+ 000000B2  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 000000B9  74 1F				je LOOPxy1
+ 000000BB  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 000000C2  74 16				je LOOPxy1
+ 000000C4  E8 FFFFFF96				call izracunavanje
+ 000000C9  33 C0				xor eax, eax
+ 000000CB  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 000000D2  75 06				jne LOOPxy1
+ 000000D4  FE 05 000000E1 R			inc counter
+ 000000DA				LOOPxy1: 
+						; x, y-1
+ 000000DA  FE 05 000000E2 R			inc dataX
+ 000000E0  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 000000E7  74 2F				je LOOPxy2
+ 000000E9  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 000000F0  74 26				je LOOPxy2
+ 000000F2  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 000000F9  74 1D				je LOOPxy2
+ 000000FB  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 00000102  74 14				je LOOPxy2
+ 00000104  E8 FFFFFF56				call izracunavanje
+ 00000109  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 00000110  75 06				jne LOOPxy2
+ 00000112  FE 05 000000E1 R			inc counter
+ 00000118				LOOPxy2:
+						; x+1, y-1
+ 00000118  FE 05 000000E2 R			inc dataX
+ 0000011E  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 00000125  74 2F				je LOOPxy3
+ 00000127  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 0000012E  74 26				je LOOPxy3
+ 00000130  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 00000137  74 1D				je LOOPxy3
+ 00000139  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 00000140  74 14				je LOOPxy3
+ 00000142  E8 FFFFFF18				call izracunavanje
+ 00000147  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 0000014E  75 06				jne LOOPxy3
+ 00000150  FE 05 000000E1 R			inc counter		
+ 00000156				LOOPxy3:
+						; x-1, y
+ 00000156  FE 05 000000E3 R			inc dataY
+ 0000015C  FE 0D 000000E2 R			dec dataX
+ 00000162  FE 0D 000000E2 R			dec dataX
+ 00000168  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 0000016F  74 2F				je LOOPxy4
+ 00000171  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 00000178  74 26				je LOOPxy4
+ 0000017A  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 00000181  74 1D				je LOOPxy4
+ 00000183  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 0000018A  74 14				je LOOPxy4
+ 0000018C  E8 FFFFFECE				call izracunavanje
+ 00000191  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 00000198  75 06				jne LOOPxy4
+ 0000019A  FE 05 000000E1 R			inc counter
+ 000001A0				LOOPxy4:
+						; x+1, y
+ 000001A0  FE 05 000000E2 R			inc dataX
+ 000001A6  FE 05 000000E2 R			inc dataX
+ 000001AC  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 000001B3  74 2F				je LOOPxy5
+ 000001B5  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 000001BC  74 26				je LOOPxy5
+ 000001BE  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 000001C5  74 1D				je LOOPxy5
+ 000001C7  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 000001CE  74 14				je LOOPxy5
+ 000001D0  E8 FFFFFE8A				call izracunavanje
+ 000001D5  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 000001DC  75 06				jne LOOPxy5
+ 000001DE  FE 05 000000E1 R			inc counter
+ 000001E4				LOOPxy5:
+						; x-1, y+1
+ 000001E4  FE 0D 000000E2 R			dec dataX
+ 000001EA  FE 0D 000000E2 R			dec dataX
+ 000001F0  FE 05 000000E3 R			inc dataY
+ 000001F6  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 000001FD  74 2F				je LOOPxy6
+ 000001FF  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 00000206  74 26				je LOOPxy6
+ 00000208  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 0000020F  74 1D				je LOOPxy6
+ 00000211  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 00000218  74 14				je LOOPxy6
+ 0000021A  E8 FFFFFE40				call izracunavanje
+ 0000021F  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 00000226  75 06				jne LOOPxy6
+ 00000228  FE 05 000000E1 R			inc counter
+ 0000022E				LOOPxy6:
+						; x, y+1
+ 0000022E  FE 05 000000E2 R			inc dataX
+ 00000234  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 0000023B  74 2F				je LOOPxy7
+ 0000023D  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 00000244  74 26				je LOOPxy7
+ 00000246  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 0000024D  74 1D				je LOOPxy7
+ 0000024F  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 00000256  74 14				je LOOPxy7
+ 00000258  E8 FFFFFE02				call izracunavanje
+ 0000025D  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 00000264  75 06				jne LOOPxy7
+ 00000266  FE 05 000000E1 R			inc counter
+ 0000026C				LOOPxy7:
+						; x+1, y+1
+ 0000026C  FE 05 000000E2 R			inc dataX
+ 00000272  80 3D 000000E2 R			cmp dataX, 255
+	   FF
+ 00000279  74 2F				je LOOPxy8
+ 0000027B  80 3D 000000E3 R			cmp dataY, 255
+	   FF
+ 00000282  74 26				je LOOPxy8
+ 00000284  80 3D 000000E2 R			cmp dataX, 9
+	   09
+ 0000028B  74 1D				je LOOPxy8
+ 0000028D  80 3D 000000E3 R			cmp dataY, 9
+	   09
+ 00000294  74 14				je LOOPxy8
+ 00000296  E8 FFFFFDC4				call izracunavanje
+ 0000029B  80 BE 000000E7 R			cmp [matricaMina + esi], 1
+	   01
+ 000002A2  75 06				jne LOOPxy8
+ 000002A4  FE 05 000000E1 R			inc counter
+ 000002AA				LOOPxy8:
+						; upis u matricu sa brojem mina
+ 000002AA  FE 0D 000000E2 R			dec dataX
+ 000002B0  FE 0D 000000E3 R			dec dataY
+ 000002B6  E8 FFFFFDA4				call izracunavanje
+ 000002BB  8A 1D 000000E1 R			mov bl, counter
+ 000002C1  80 C3 30				add bl, 30h
+ 000002C4  88 9E 00000138 R			mov matricaMinaBroj[esi], bl
+ 000002CA  8A 0D 000000E3 R			mov cl, dataY
+ 000002D0  8A 2D 000000E2 R			mov ch, dataX
+ 000002D6  B8 00000000				mov eax, 0
+ 000002DB  A2 000000E1 R			mov counter, al
+ 000002E0  C3				ret
+ 000002E1			izbrojiMine endp
+
+
+					; ******************************
+					; izracunavanje matrice mina
+					; ******************************
+
+ 000002E1			popuniMatricu PROC
+ 000002E1  32 C9			xor cl, cl ; brojac za y
+ 000002E3  32 ED			xor ch, ch ; brojac za x
+ 000002E5				FORX:
+ 000002E5				FORY:
+ 000002E5  E8 FFFFFD97				call izbrojiMine
+ 000002EA  FE C5				inc ch
+ 000002EC  80 FD 09				cmp ch, 9
+ 000002EF  75 F4				jnz FORX
+ 000002F1  B5 00				mov ch, 0
+ 000002F3  FE C1				inc cl
+ 000002F5  80 F9 09				cmp cl, 9
+ 000002F8  75 EB				jnz FORY
+ 000002FA  C3				ret
+ 000002FB			popuniMatricu endp
+
+					; ******************************
+					; promena - nije otvoreno polje
+					; ******************************
+ 000002FB			promenaNijeOtvoreno PROC
+ 000002FB  8A 15 000000DC R			mov dl, kursorX
+ 00000301  8A 35 000000DD R			mov dh, kursorY
+ 00000307  E8 00000000 E			call Gotoxy
+ 0000030C  B0 B0				mov al, karakterPrazan
+ 0000030E  E8 00000000 E			call WriteChar
+ 00000313  C3				ret
+ 00000314			promenaNijeOtvoreno endp
+
+					; ******************************
+					; promena - otvoreno polje
+					; ******************************
+ 00000314			promenaOtvoreno PROC
+ 00000314  33 C0				xor eax, eax
+ 00000316  A0 000000DC R			mov al, kursorX
+ 0000031B  A2 000000E2 R			mov dataX, al
+ 00000320  A0 000000DD R			mov al, kursorY
+ 00000325  A2 000000E3 R			mov dataY, al
+ 0000032A  E8 FFFFFD30				call izracunavanje
+ 0000032F  8A 86 00000138 R			mov al, matricaMinaBroj[esi]
+ 00000335  8A 15 000000DC R			mov dl, kursorX
+ 0000033B  8A 35 000000DD R			mov dh, kursorY
+ 00000341  E8 00000000 E			call Gotoxy
+ 00000346  E8 00000000 E			call WriteChar
+ 0000034B  C3				ret
+ 0000034C			promenaOtvoreno endp
+
+					; ******************************
+					; promena - zastava
+					; ******************************
+ 0000034C			promenaZastava PROC
+ 0000034C  B8 00000004				mov eax, zastavaBoja
+ 00000351  E8 00000000 E			call SetTextColor
+ 00000356  8A 15 000000DC R			mov dl, kursorX
+ 0000035C  8A 35 000000DD R			mov dh, kursorY
+ 00000362  B0 B0				mov al, karakterPrazan
+ 00000364  E8 00000000 E			call Gotoxy
+ 00000369  E8 00000000 E			call WriteChar
+ 0000036E  B8 0000000F				mov eax, pozadinaBoja
+ 00000373  E8 00000000 E			call SetTextColor
+ 00000378  C3				ret
+ 00000379			promenaZastava endp
+
+					; ******************************
+					; u 'trenutnoPolje' upisuje se podatak o trenutnom polju iz 'matricaMinaPodatak'
+					; ******************************
+ 00000379			izracunajTrenutnoPolje PROC
+ 00000379  33 C0				xor eax, eax
+ 0000037B  A0 000000DC R			mov al, kursorX
+ 00000380  A2 000000E2 R			mov dataX, al
+ 00000385  A0 000000DD R			mov al, kursorY
+ 0000038A  A2 000000E3 R			mov dataY, al
+ 0000038F  E8 FFFFFCCB				call izracunavanje
+ 00000394  8A 86 00000189 R			mov al, matricaMinaPodatak[esi]
+ 0000039A  A2 000000DE R			mov trenutnoPolje, al
+ 0000039F  C3				ret
+ 000003A0			izracunajTrenutnoPolje endp
+
+					; ******************************
+					; u 'trenutnoPolje' upisuje se podatak o trenutnom polju iz 'matricaMinaPodatak'
+					; ******************************
+ 000003A0			izracunajTrenutnoPolje1 PROC
+ 000003A0  33 C0				xor eax, eax
+ 000003A2  A0 000000E4 R			mov al, kursorXX
+ 000003A7  A2 000000E2 R			mov dataX, al
+ 000003AC  A0 000000E5 R			mov al, kursorYY
+ 000003B1  A2 000000E3 R			mov dataY, al
+ 000003B6  E8 FFFFFCA4				call izracunavanje
+ 000003BB  8A 86 00000189 R			mov al, matricaMinaPodatak[esi]
+ 000003C1  A2 000000DE R			mov trenutnoPolje, al
+ 000003C6  C3				ret
+ 000003C7			izracunajTrenutnoPolje1 endp
+
+					; ******************************
+					; otvara novo polje
+					; koriste se kursorXX i kursorYY da bi se sacuvale vrednosti trenutnog kursora
+					; ******************************
+ 000003C7			otvaranjePolja PROC
+						; otvara polje
+ 000003C7  33 C0				xor eax, eax
+ 000003C9  A0 000000E4 R			mov al, kursorXX
+ 000003CE  A2 000000E2 R			mov dataX, al
+ 000003D3  A0 000000E5 R			mov al, kursorYY
+ 000003D8  A2 000000E3 R			mov dataY, al
+ 000003DD  E8 FFFFFC7D				call izracunavanje
+ 000003E2  8A 86 00000138 R			mov al, matricaMinaBroj[esi]
+ 000003E8  8A 15 000000E4 R			mov dl, kursorXX
+ 000003EE  8A 35 000000E5 R			mov dh, kursorYY
+ 000003F4  E8 00000000 E			call Gotoxy
+ 000003F9  E8 00000000 E			call WriteChar
+ 000003FE  B8 0000000F				mov eax, pozadinaBoja
+ 00000403  E8 00000000 E			call SetTextColor
+
+						; menja stanje polja u matrici (polje je sada otvoreno)
+ 00000408  33 C0				xor eax, eax
+ 0000040A  A0 000000E4 R			mov al, kursorXX
+ 0000040F  A2 000000E2 R			mov dataX, al
+ 00000414  A0 000000E5 R			mov al, kursorYY
+ 00000419  A2 000000E3 R			mov dataY, al
+ 0000041E  E8 FFFFFC3C				call izracunavanje
+ 00000423  33 DB				xor ebx, ebx
+ 00000425  B3 01				mov bl, 1
+ 00000427  88 9E 00000189 R			mov matricaMinaPodatak[esi], bl
+
+						; proverava da li je broj mina 0
+ 0000042D  33 D2				xor edx, edx
+ 0000042F  8A 96 00000138 R			mov dl, matricaMinaBroj[esi]
+ 00000435  80 FA 30				cmp dl, 30h
+ 00000438  74 05				je NULA
+ 0000043A  E9 00000218				jmp NIJE_NULA1
+ 0000043F				NULA:
+						; otvara sva polja okolo
+						; x-1, y-1
+ 0000043F  FE 0D 000000E4 R			dec kursorXX
+ 00000445  FE 0D 000000E5 R			dec kursorYY
+ 0000044B  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 00000452  74 2E				je nula1
+ 00000454  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 0000045B  74 25				je nula1
+ 0000045D  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 00000464  74 1C				je nula1
+ 00000466  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 0000046D  74 13				je nula1
+ 0000046F  E8 FFFFFF2C				call izracunajTrenutnoPolje1
+ 00000474  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 0000047B  74 05				je nula1
+ 0000047D  E8 FFFFFF45				call otvaranjePolja
+ 00000482				nula1:
+						; x, y-1
+ 00000482  FE 05 000000E4 R			inc kursorXX
+ 00000488  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 0000048F  74 2E				je nula2
+ 00000491  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 00000498  74 25				je nula2
+ 0000049A  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 000004A1  74 1C				je nula2
+ 000004A3  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 000004AA  74 13				je nula2
+ 000004AC  E8 FFFFFEEF				call izracunajTrenutnoPolje1
+ 000004B1  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 000004B8  74 05				je nula2
+ 000004BA  E8 FFFFFF08				call otvaranjePolja
+ 000004BF				nula2:
+						; x+1, y-1
+ 000004BF  FE 05 000000E4 R			inc kursorXX
+ 000004C5  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 000004CC  74 2E				je nula3
+ 000004CE  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 000004D5  74 25				je nula3
+ 000004D7  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 000004DE  74 1C				je nula3
+ 000004E0  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 000004E7  74 13				je nula3
+ 000004E9  E8 FFFFFEB2				call izracunajTrenutnoPolje1
+ 000004EE  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 000004F5  74 05				je nula3
+ 000004F7  E8 FFFFFECB				call otvaranjePolja
+ 000004FC				nula3:
+						; x-1, y
+ 000004FC  FE 05 000000E5 R			inc kursorYY
+ 00000502  FE 0D 000000E4 R			dec kursorXX
+ 00000508  FE 0D 000000E4 R			dec kursorXX
+ 0000050E  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 00000515  74 2E				je nula4
+ 00000517  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 0000051E  74 25				je nula4
+ 00000520  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 00000527  74 1C				je nula4
+ 00000529  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 00000530  74 13				je nula4
+ 00000532  E8 FFFFFE69				call izracunajTrenutnoPolje1
+ 00000537  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 0000053E  74 05				je nula4
+ 00000540  E8 FFFFFE82				call otvaranjePolja
+ 00000545				nula4:
+						; x+1, y
+ 00000545  FE 05 000000E4 R			inc kursorXX
+ 0000054B  FE 05 000000E4 R			inc kursorXX
+ 00000551  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 00000558  74 2E				je nula5
+ 0000055A  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 00000561  74 25				je nula5
+ 00000563  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 0000056A  74 1C				je nula5
+ 0000056C  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 00000573  74 13				je nula5
+ 00000575  E8 FFFFFE26				call izracunajTrenutnoPolje1
+ 0000057A  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000581  74 05				je nula5
+ 00000583  E8 FFFFFE3F				call otvaranjePolja
+ 00000588				nula5:
+						; x-1, y+1
+ 00000588  FE 05 000000E5 R			inc kursorYY
+ 0000058E  FE 0D 000000E4 R			dec kursorXX
+ 00000594  FE 0D 000000E4 R			dec kursorXX
+ 0000059A  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 000005A1  74 2E				je nula6
+ 000005A3  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 000005AA  74 25				je nula6
+ 000005AC  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 000005B3  74 1C				je nula6
+ 000005B5  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 000005BC  74 13				je nula6
+ 000005BE  E8 FFFFFDDD				call izracunajTrenutnoPolje1
+ 000005C3  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 000005CA  74 05				je nula6
+ 000005CC  E8 FFFFFDF6				call otvaranjePolja
+ 000005D1				nula6:
+						; x, y+1
+ 000005D1  FE 05 000000E4 R			inc kursorXX
+ 000005D7  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 000005DE  74 2E				je nula7
+ 000005E0  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 000005E7  74 25				je nula7
+ 000005E9  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 000005F0  74 1C				je nula7
+ 000005F2  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 000005F9  74 13				je nula7
+ 000005FB  E8 FFFFFDA0				call izracunajTrenutnoPolje1
+ 00000600  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000607  74 05				je nula7
+ 00000609  E8 FFFFFDB9				call otvaranjePolja
+ 0000060E				nula7:
+						; x+1, y+1
+ 0000060E  FE 05 000000E4 R			inc kursorXX
+ 00000614  80 3D 000000E4 R			cmp kursorXX, 255
+	   FF
+ 0000061B  74 2E				je NIJE_NULA
+ 0000061D  80 3D 000000E4 R			cmp kursorXX, 9
+	   09
+ 00000624  74 25				je NIJE_NULA
+ 00000626  80 3D 000000E5 R			cmp kursorYY, 255
+	   FF
+ 0000062D  74 1C				je NIJE_NULA
+ 0000062F  80 3D 000000E5 R			cmp kursorYY, 9
+	   09
+ 00000636  74 13				je NIJE_NULA
+ 00000638  E8 FFFFFD63				call izracunajTrenutnoPolje1
+ 0000063D  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000644  74 05				je NIJE_NULA
+ 00000646  E8 FFFFFD7C				call otvaranjePolja
+ 0000064B				NIJE_NULA:
+ 0000064B  FE 0D 000000E4 R			dec kursorXX
+ 00000651  FE 0D 000000E5 R			dec kursorYY
+ 00000657				NIJE_NULA1:
+ 00000657  C3				ret
+ 00000658			otvaranjePolja endp
+
+					; ******************************
+					; kada je mina pogodjena, otvaraju se sva polja i naznacene mine
+					; ******************************
+ 00000658			pogodjenaMina PROC
+					; poruka za zavrsetak igre
+					INVOKE MessageBox, NULL, ADDR gameoverMsg,
+					ADDR captionG, MB_OK
+ 00000658  6A 00	   *	    push   +000000000h
+ 0000065A  68 000000BC R   *	    push   OFFSET captionG
+ 0000065F  68 00000044 R   *	    push   OFFSET gameoverMsg
+ 00000664  6A 00	   *	    push   +000000000h
+ 00000666  E8 00000000 E   *	    call   MessageBoxA
+					; otkrivanje svih mina
+ 0000066B  33 F6			xor esi, esi
+ 0000066D  33 C9			xor ecx, ecx
+ 0000066F			loopMx:
+ 0000066F			loopMy:
+ 0000066F  88 2D 000000E2 R		mov dataX, ch
+ 00000675  88 0D 000000E3 R		mov datay, cl
+ 0000067B  E8 FFFFF9DF			call izracunavanje
+ 00000680  8A 2D 000000E2 R		mov ch, dataX
+ 00000686  8A 0D 000000E3 R		mov cl, dataY
+ 0000068C  80 BE 000000E7 R		cmp matricaMina[esi], 1
+	   01
+ 00000693  74 02			je loopM1
+ 00000695  EB 1D			jmp loopM2
+ 00000697			loopM1:
+ 00000697  A0 000000DF R		mov al, minaBoja
+ 0000069C  E8 00000000 E		call SetTextColor
+ 000006A1  8A F1			mov dh, cl
+ 000006A3  8A D5			mov dl, ch
+ 000006A5  A0 000000E0 R		mov al, minaKarakter
+ 000006AA  E8 00000000 E		call Gotoxy
+ 000006AF  E8 00000000 E		call WriteChar
+ 000006B4			loopM2:
+ 000006B4  C6 86 00000138 R		mov matricaMinaBroj[esi], 0
+	   00
+ 000006BB  C6 86 00000189 R		mov matricaMinaPodatak[esi], 0
+	   00
+ 000006C2  FE C5			inc ch
+ 000006C4  80 FD 09			cmp ch, 9
+ 000006C7  75 A6			jne loopMx
+ 000006C9  32 ED			xor ch, ch
+ 000006CB  FE C1			inc cl
+ 000006CD  80 F9 09			cmp cl, 9
+ 000006D0  75 9D			jne loopMy
+ 000006D2  C3				ret
+ 000006D3			pogodjenaMina endp
+
+					; ******************************
+					; main program
+					; ******************************
+
+ 000006D3			main PROC
+
+					INVOKE GetStdHandle,STD_OUTPUT_HANDLE
+ 000006D3  6A F5	   *	    push    -00000000Bh
+ 000006D5  E8 00000000 E   *	    call   GetStdHandle
+ 000006DA  A3 00000000 R		mov outHandle,eax
+
+					INVOKE SetConsoleScreenBufferSize,
+					  outHandle,scrSize
+ 000006DF  FF 35 00000008 R *	    push   dword  ptr scrSize
+ 000006E5  FF 35 00000000 R *	    push   outHandle
+ 000006EB  E8 00000000 E   *	    call   SetConsoleScreenBufferSize
+
+					INVOKE SetConsoleCursorPosition, outHandle, xyPos
+ 000006F0  FF 35 0000000C R *	    push   dword  ptr xyPos
+ 000006F6  FF 35 00000000 R *	    push   outHandle
+ 000006FC  E8 00000000 E   *	    call   SetConsoleCursorPosition
+
+					INVOKE SetConsoleTitle, ADDR titleStr
+ 00000701  68 00000010 R   *	    push   OFFSET titleStr
+ 00000706  E8 00000000 E   *	    call   SetConsoleTitleA
+
+					INVOKE SetConsoleWindowInfo,
+						outHandle,
+						TRUE,
+						ADDR windowRect
+ 0000070B  68 0000001C R   *	    push   OFFSET windowRect
+ 00000710  6A 01	   *	    push   +000000001h
+ 00000712  FF 35 00000000 R *	    push   outHandle
+ 00000718  E8 00000000 E   *	    call   SetConsoleWindowInfo
+
+					
+ 0000071D			POCETAK:
+ 0000071D  E8 FFFFFBBF			call popuniMatricu
+
+ 00000722  E8 FFFFF8D9			call popunjavanjeEkrana
+
+ 00000727  E8 FFFFF901			call pocetnaPozicijaKursora	
+
+					; ******************************
+					; unos karaktera
+					; ******************************
+ 0000072C  32 C0				xor al, al
+ 0000072E				loopKey:
+ 0000072E  B8 00000032				mov eax, 50
+ 00000733  E8 00000000 E			call Delay
+ 00000738  E8 00000000 E			call ReadKey
+ 0000073D  74 EF				jz loopKey
+						
+						; ******************************
+						; levo
+						; ******************************
+
+ 0000073F				_if1: 
+ 0000073F  3C 61				cmp al, 'a'
+ 00000741  74 05				je THEN1
+ 00000743  E9 0000008D				jmp ENDIF1
+ 00000748				THEN1:
+ 00000748  E8 FFFFFC2C				call izracunajTrenutnoPolje
+
+						; provera da nije kraj ekrana
+ 0000074D  80 3D 000000DC R			cmp kursorX, 0
+	   00
+ 00000754  74 7F				je ENDIF1
+
+						; vraca pozadinu
+ 00000756  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 0000075D  74 02				je A0
+ 0000075F  EB 05				jmp AX0
+ 00000761				A0:
+ 00000761  E8 FFFFFB95				call promenaNijeOtvoreno
+ 00000766				AX0:
+ 00000766  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 0000076D  74 02				je A1
+ 0000076F  EB 05				jmp AX1
+ 00000771				A1:
+ 00000771  E8 FFFFFB9E				call promenaOtvoreno
+ 00000776				AX1:
+ 00000776  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 0000077D  74 02				je A2
+ 0000077F  EB 05				jmp AX2
+ 00000781				A2:
+ 00000781  E8 FFFFFBC6				call promenaZastava
+ 00000786				AX2:
+
+						; pomera kursor
+ 00000786  B8 0000000E				mov eax, kursorBoja
+ 0000078B  E8 00000000 E			call SetTextColor
+ 00000790  FE 0D 000000DC R			dec kursorX
+ 00000796  E8 FFFFFBDE				call izracunajTrenutnoPolje
+ 0000079B  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 000007A2  74 02				je B0
+ 000007A4  EB 05				jmp BX0
+ 000007A6				B0:
+ 000007A6  E8 FFFFFB50				call promenaNijeOtvoreno
+ 000007AB				BX0:
+ 000007AB  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 000007B2  74 02				je B1
+ 000007B4  EB 05				jmp BX1
+ 000007B6				B1:
+ 000007B6  E8 FFFFFB59				call promenaOtvoreno
+ 000007BB				BX1:
+ 000007BB  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 000007C2  74 02				je B2
+ 000007C4  EB 05				jmp BX2
+ 000007C6				B2:
+ 000007C6  E8 FFFFFB81				call promenaZastava
+ 000007CB				BX2:
+ 000007CB  B8 0000000F				mov eax, pozadinaBoja
+ 000007D0  E8 00000000 E			call SetTextColor
+ 000007D5				ENDIF1:
+
+						; ******************************
+						; desno
+						; ******************************
+
+ 000007D5				_if2: 
+ 000007D5  3C 64				cmp al, 'd'
+ 000007D7  74 05				je THEN2
+ 000007D9  E9 0000008D				jmp ENDIF2
+ 000007DE				THEN2:
+ 000007DE  E8 FFFFFB96				call izracunajTrenutnoPolje
+
+						; provera da nije kraj ekrana
+ 000007E3  80 3D 000000DC R			cmp kursorX, 8
+	   08
+ 000007EA  74 7F				je ENDIF2
+
+						; vraca pozadinu
+ 000007EC  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 000007F3  74 02				je C0
+ 000007F5  EB 05				jmp CX0
+ 000007F7				C0:
+ 000007F7  E8 FFFFFAFF				call promenaNijeOtvoreno
+ 000007FC				CX0:
+ 000007FC  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000803  74 02				je C1
+ 00000805  EB 05				jmp CX1
+ 00000807				C1:
+ 00000807  E8 FFFFFB08				call promenaOtvoreno
+ 0000080C				CX1:
+ 0000080C  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 00000813  74 02				je C2
+ 00000815  EB 05				jmp CX2
+ 00000817				C2:
+ 00000817  E8 FFFFFB30				call promenaZastava
+ 0000081C				CX2:
+
+						; pomera kursor
+ 0000081C  B8 0000000E				mov eax, kursorBoja
+ 00000821  E8 00000000 E			call SetTextColor
+ 00000826  FE 05 000000DC R			inc kursorX
+ 0000082C  E8 FFFFFB48				call izracunajTrenutnoPolje
+ 00000831  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 00000838  74 02				je D0
+ 0000083A  EB 05				jmp DX0
+ 0000083C				D0:
+ 0000083C  E8 FFFFFABA				call promenaNijeOtvoreno
+ 00000841				DX0:
+ 00000841  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000848  74 02				je D1
+ 0000084A  EB 05				jmp DX1
+ 0000084C				D1:
+ 0000084C  E8 FFFFFAC3				call promenaOtvoreno
+ 00000851				DX1:
+ 00000851  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 00000858  74 02				je D2
+ 0000085A  EB 05				jmp DX2
+ 0000085C				D2:
+ 0000085C  E8 FFFFFAEB				call promenaZastava
+ 00000861				DX2:
+ 00000861  B8 0000000F				mov eax, pozadinaBoja
+ 00000866  E8 00000000 E			call SetTextColor
+ 0000086B				ENDIF2:
+
+						; ******************************
+						; gore
+						; ******************************
+
+ 0000086B				_if3: 
+ 0000086B  3C 77				cmp al, 'w'
+ 0000086D  74 05				je THEN3
+ 0000086F  E9 0000008D				jmp ENDIF3
+ 00000874				THEN3:
+ 00000874  E8 FFFFFB00				call izracunajTrenutnoPolje
+
+						; provera da nije kraj ekrana
+ 00000879  80 3D 000000DD R			cmp kursorY, 0
+	   00
+ 00000880  74 7F				je ENDIF3
+
+						; vraca pozadinu
+ 00000882  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 00000889  74 02				je E0
+ 0000088B  EB 05				jmp EX0
+ 0000088D				E0:
+ 0000088D  E8 FFFFFA69				call promenaNijeOtvoreno
+ 00000892				EX0:
+ 00000892  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000899  74 02				je E1
+ 0000089B  EB 05				jmp EX1
+ 0000089D				E1:
+ 0000089D  E8 FFFFFA72				call promenaOtvoreno
+ 000008A2				EX1:
+ 000008A2  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 000008A9  74 02				je E2
+ 000008AB  EB 05				jmp EX2
+ 000008AD				E2:
+ 000008AD  E8 FFFFFA9A				call promenaZastava
+ 000008B2				EX2:
+
+						; pomera kursor
+ 000008B2  B8 0000000E				mov eax, kursorBoja
+ 000008B7  E8 00000000 E			call SetTextColor
+ 000008BC  FE 0D 000000DD R			dec kursorY
+ 000008C2  E8 FFFFFAB2				call izracunajTrenutnoPolje
+ 000008C7  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 000008CE  74 02				je F0
+ 000008D0  EB 05				jmp FX0
+ 000008D2				F0:
+ 000008D2  E8 FFFFFA24				call promenaNijeOtvoreno
+ 000008D7				FX0:
+ 000008D7  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 000008DE  74 02				je F1
+ 000008E0  EB 05				jmp FX1
+ 000008E2				F1:
+ 000008E2  E8 FFFFFA2D				call promenaOtvoreno
+ 000008E7				FX1:
+ 000008E7  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 000008EE  74 02				je F2
+ 000008F0  EB 05				jmp FX2
+ 000008F2				F2:
+ 000008F2  E8 FFFFFA55				call promenaZastava
+ 000008F7				FX2:
+ 000008F7  B8 0000000F				mov eax, pozadinaBoja
+ 000008FC  E8 00000000 E			call SetTextColor
+ 00000901				ENDIF3:
+
+						; ******************************
+						; dole
+						; ******************************
+
+ 00000901				_if4: 
+ 00000901  3C 73				cmp al, 's'
+ 00000903  74 05				je THEN4
+ 00000905  E9 0000008D				jmp ENDIF4
+ 0000090A				THEN4:
+ 0000090A  E8 FFFFFA6A				call izracunajTrenutnoPolje
+
+						; provera da nije kraj ekrana
+ 0000090F  80 3D 000000DD R			cmp kursorY, 8
+	   08
+ 00000916  74 7F				je ENDIF4
+
+						; vraca pozadinu
+ 00000918  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 0000091F  74 02				je G0
+ 00000921  EB 05				jmp GX0
+ 00000923				G0:
+ 00000923  E8 FFFFF9D3				call promenaNijeOtvoreno
+ 00000928				GX0:
+ 00000928  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 0000092F  74 02				je G1
+ 00000931  EB 05				jmp GX1
+ 00000933				G1:
+ 00000933  E8 FFFFF9DC				call promenaOtvoreno
+ 00000938				GX1:
+ 00000938  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 0000093F  74 02				je G2
+ 00000941  EB 05				jmp GX2
+ 00000943				G2:
+ 00000943  E8 FFFFFA04				call promenaZastava
+ 00000948				GX2:
+
+						; pomera kursor
+ 00000948  B8 0000000E				mov eax, kursorBoja
+ 0000094D  E8 00000000 E			call SetTextColor
+ 00000952  FE 05 000000DD R			inc kursorY
+ 00000958  E8 FFFFFA1C				call izracunajTrenutnoPolje
+ 0000095D  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 00000964  74 02				je H0
+ 00000966  EB 05				jmp HX0
+ 00000968				H0:
+ 00000968  E8 FFFFF98E				call promenaNijeOtvoreno
+ 0000096D				HX0:
+ 0000096D  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000974  74 02				je H1
+ 00000976  EB 05				jmp HX1
+ 00000978				H1:
+ 00000978  E8 FFFFF997				call promenaOtvoreno
+ 0000097D				HX1:
+ 0000097D  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 00000984  74 02				je H2
+ 00000986  EB 05				jmp HX2
+ 00000988				H2:
+ 00000988  E8 FFFFF9BF				call promenaZastava
+ 0000098D				HX2:
+ 0000098D  B8 0000000F				mov eax, pozadinaBoja
+ 00000992  E8 00000000 E			call SetTextColor
+ 00000997				ENDIF4:
+
+						; ******************************
+						; otvaranje polja
+						; ******************************
+ 00000997  3C 20			_if5: cmp al, 32 ; spacebar
+ 00000999  74 02				je THEN5
+ 0000099B  EB 7C				jmp ENDIF5
+ 0000099D				THEN5:
+ 0000099D  E8 FFFFF9D7				call izracunajTrenutnoPolje
+
+						; provera da nije otvoreno polje ili zastava (onda nista ne radi)
+ 000009A2  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 000009A9  74 6E				je ENDIF5
+ 000009AB  80 3D 000000DE R			cmp trenutnoPolje, 2
+	   02
+ 000009B2  74 65				je ENDIF5
+
+ 000009B4  33 C0				xor eax, eax
+ 000009B6  A0 000000DC R			mov al, kursorX
+ 000009BB  A2 000000E2 R			mov dataX, al
+ 000009C0  A0 000000DD R			mov al, kursorY
+ 000009C5  A2 000000E3 R			mov dataY, al
+ 000009CA  E8 FFFFF690				call izracunavanje
+ 000009CF  8A 86 000000E7 R			mov al, matricaMina[esi]
+ 000009D5  3C 01				cmp al, 1
+ 000009D7  74 02				je lastLoop
+ 000009D9  EB 0A				jmp lastLoop1
+ 000009DB				lastLoop:
+ 000009DB  E8 FFFFFC78				call pogodjenaMina
+ 000009E0  E9 00000115				jmp lastLoop2
+ 000009E5				lastLoop1:
+ 000009E5  33 C0				xor eax, eax
+ 000009E7  A0 000000DC R			mov al, kursorX
+ 000009EC  A2 000000E4 R			mov kursorXX, al
+ 000009F1  A0 000000DD R			mov al, kursorY
+ 000009F6  A2 000000E5 R			mov kursorYY, al
+ 000009FB  E8 FFFFF9C7				call otvaranjePolja
+						
+						; postavlja kursor
+ 00000A00  B8 0000000E				mov eax, kursorBoja
+ 00000A05  E8 00000000 E			call SetTextColor
+ 00000A0A  E8 FFFFF905				call promenaOtvoreno
+ 00000A0F  B8 0000000F				mov eax, pozadinaBoja
+ 00000A14  E8 00000000 E			call SetTextColor
+
+ 00000A19				ENDIF5:
+						; ******************************
+						; postavljanje zastave
+						; ******************************
+ 00000A19  3C 0F			_if6: cmp al, 15 ; left Shift
+ 00000A1B  75 05				jne THEN6
+ 00000A1D  E9 000000B5				jmp ENDIF6
+ 00000A22				THEN6:
+ 00000A22  E8 FFFFF952				call izracunajTrenutnoPolje
+ 00000A27  80 3D 000000DE R			cmp trenutnoPolje, 1
+	   01
+ 00000A2E  0F 84 000000A3			je ENDIF6
+ 00000A34  80 3D 000000DE R			cmp trenutnoPolje, 0
+	   00
+ 00000A3B  74 02				je postavi
+ 00000A3D  EB 5D				jmp ukloni
+ 00000A3F				postavi:
+ 00000A3F  E8 FFFFF908				call promenaZastava
+						
+						; menja stanje polja u matrici (polje je sada zastava)
+ 00000A44  33 C0				xor eax, eax
+ 00000A46  A0 000000DC R			mov al, kursorX
+ 00000A4B  A2 000000E2 R			mov dataX, al
+ 00000A50  A0 000000DD R			mov al, kursorY
+ 00000A55  A2 000000E3 R			mov dataY, al
+ 00000A5A  E8 FFFFF600				call izracunavanje
+ 00000A5F  33 DB				xor ebx, ebx
+ 00000A61  B3 02				mov bl, 2
+ 00000A63  88 9E 00000189 R			mov matricaMinaPodatak[esi], bl
+						; povecava broj pogodjenih mina ukoliko se mina nalazi na polju
+ 00000A69  80 BE 000000E7 R			cmp matricaMina[esi], 1
+	   01
+ 00000A70  74 02				je POG
+ 00000A72  EB 63				jmp ENDIF6
+ 00000A74				POG:
+ 00000A74  FE 05 000000E6 R			inc pogodjene
+ 00000A7A  80 3D 000000E6 R			cmp pogodjene, 10
+	   0A
+ 00000A81  74 02				je POBEDA
+ 00000A83  EB 52				jmp ENDIF6
+ 00000A85				POBEDA:
+						INVOKE MessageBox, NULL, ADDR winMsg,
+						ADDR captionWin, MB_OK
+ 00000A85  6A 00	   *	    push   +000000000h
+ 00000A87  68 000000D5 R   *	    push   OFFSET captionWin
+ 00000A8C  68 0000008C R   *	    push   OFFSET winMsg
+ 00000A91  6A 00	   *	    push   +000000000h
+ 00000A93  E8 00000000 E   *	    call   MessageBoxA
+
+ 00000A98  EB 60				jmp lastLoop2
+ 00000A9A				NPOG:
+ 00000A9A  EB 3B				jmp ENDIF6
+ 00000A9C				ukloni:
+ 00000A9C  E8 FFFFF85A				call promenaNijeOtvoreno
+
+						; menja stanje polja u matrici (polje je sada neotvoreno)
+ 00000AA1  33 C0				xor eax, eax
+ 00000AA3  A0 000000DC R			mov al, kursorX
+ 00000AA8  A2 000000E2 R			mov dataX, al
+ 00000AAD  A0 000000DD R			mov al, kursorY
+ 00000AB2  A2 000000E3 R			mov dataY, al
+ 00000AB7  E8 FFFFF5A3				call izracunavanje
+ 00000ABC  33 DB				xor ebx, ebx
+ 00000ABE  B3 00				mov bl, 0
+ 00000AC0  88 9E 00000189 R			mov matricaMinaPodatak[esi], bl
+						; smanjuje broj pogodjenih mina ukoliko se mina nalazila na tom polju
+ 00000AC6  80 BE 000000E7 R			cmp matricaMina[esi], 1
+	   01
+ 00000ACD  74 02				je POG1
+ 00000ACF  EB 06				jmp ENDIF6
+ 00000AD1				POG1:
+ 00000AD1  FE 0D 000000E6 R			dec pogodjene
+
+ 00000AD7				ENDIF6:
+
+						; ******************************
+						; izlazak iz igrice
+						; ******************************
+ 00000AD7  3C 1B			_if7: cmp al, 27 ; esc
+ 00000AD9  74 02				je THEN7
+ 00000ADB  EB 18				jmp ENDIF7
+ 00000ADD				THEN7:
+						INVOKE MessageBox, NULL, ADDR questionMsg,
+						ADDR captionQ, MB_YESNO + MB_ICONQUESTION
+ 00000ADD  6A 24	   *	    push   +000000024h
+ 00000ADF  68 000000B4 R   *	    push   OFFSET captionQ
+ 00000AE4  68 00000024 R   *	    push   OFFSET questionMsg
+ 00000AE9  6A 00	   *	    push   +000000000h
+ 00000AEB  E8 00000000 E   *	    call   MessageBoxA
+ 00000AF0  83 F8 06				cmp eax, IDYES
+ 00000AF3  74 05				je lastLoop2
+ 00000AF5				ENDIF7:
+ 00000AF5  E9 FFFFFC34				jmp loopKey
+					
+ 00000AFA				lastLoop2:
+						; nova igra?
+						INVOKE MessageBox, NULL, ADDR newGameMsg,
+						ADDR captionNG, MB_YESNO + MB_ICONQUESTION
+ 00000AFA  6A 24	   *	    push   +000000024h
+ 00000AFC  68 000000CA R   *	    push   OFFSET captionNG
+ 00000B01  68 00000067 R   *	    push   OFFSET newGameMsg
+ 00000B06  6A 00	   *	    push   +000000000h
+ 00000B08  E8 00000000 E   *	    call   MessageBoxA
+ 00000B0D  83 F8 06				cmp eax, IDYES
+ 00000B10  74 02				je NOVAIGRA
+ 00000B12  EB 05				jmp KRAJ
+ 00000B14				NOVAIGRA:
+ 00000B14  E9 FFFFFC04				jmp POCETAK
+ 00000B19				KRAJ:
+
+					INVOKE ExitProcess,0
+ 00000B19  6A 00	   *	    push   +000000000h
+ 00000B1B  E8 00000000 E   *	    call   ExitProcess
+ 00000B20			main ENDP
+				END main
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    09/11/17 14:08:38
+Minesweeper.asm						     Symbols 2 - 1
+
+
+
+
+Structures and Unions:
+
+                N a m e                  Size
+                                         Offset      Type
+
+CONSOLE_CURSOR_INFO  . . . . . .	 00000008
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  bVisible . . . . . . . . . . .	 00000004	 DWord
+CONSOLE_SCREEN_BUFFER_INFO . . .	 00000016
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCursorPosition . . . . . . .	 00000004	 DWord
+  wAttributes  . . . . . . . . .	 00000008	 Word
+  srWindow . . . . . . . . . . .	 0000000A	 QWord
+  dwMaximumWindowSize  . . . . .	 00000012	 DWord
+COORD  . . . . . . . . . . . . .	 00000004
+  X  . . . . . . . . . . . . . .	 00000000	 Word
+  Y  . . . . . . . . . . . . . .	 00000002	 Word
+FILETIME . . . . . . . . . . . .	 00000008
+  loDateTime . . . . . . . . . .	 00000000	 DWord
+  hiDateTime . . . . . . . . . .	 00000004	 DWord
+FOCUS_EVENT_RECORD . . . . . . .	 00000004
+  bSetFocus  . . . . . . . . . .	 00000000	 DWord
+FPU_ENVIRON  . . . . . . . . . .	 0000001C
+  controlWord  . . . . . . . . .	 00000000	 Word
+  statusWord . . . . . . . . . .	 00000004	 Word
+  tagWord  . . . . . . . . . . .	 00000008	 Word
+  instrPointerOffset . . . . . .	 0000000C	 DWord
+  instrPointerSelector . . . . .	 00000010	 DWord
+  operandPointerOffset . . . . .	 00000014	 DWord
+  operandPointerSelector . . . .	 00000018	 Word
+INPUT_RECORD . . . . . . . . . .	 00000014
+  EventType  . . . . . . . . . .	 00000000	 Word
+  Event  . . . . . . . . . . . .	 00000004	 XmmWord
+  bKeyDown . . . . . . . . . . .	 00000000	 DWord
+  wRepeatCount . . . . . . . . .	 00000004	 Word
+  wVirtualKeyCode  . . . . . . .	 00000006	 Word
+  wVirtualScanCode . . . . . . .	 00000008	 Word
+  uChar  . . . . . . . . . . . .	 0000000A	 Word
+  UnicodeChar  . . . . . . . . .	 00000000	 Word
+  AsciiChar  . . . . . . . . . .	 00000000	 Byte
+  dwControlKeyState  . . . . . .	 0000000C	 DWord
+  dwMousePosition  . . . . . . .	 00000000	 DWord
+  dwButtonState  . . . . . . . .	 00000004	 DWord
+  dwMouseControlKeyState . . . .	 00000008	 DWord
+  dwEventFlags . . . . . . . . .	 0000000C	 DWord
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCommandId  . . . . . . . . .	 00000000	 DWord
+  bSetFocus  . . . . . . . . . .	 00000000	 DWord
+KEY_EVENT_RECORD . . . . . . . .	 00000010
+  bKeyDown . . . . . . . . . . .	 00000000	 DWord
+  wRepeatCount . . . . . . . . .	 00000004	 Word
+  wVirtualKeyCode  . . . . . . .	 00000006	 Word
+  wVirtualScanCode . . . . . . .	 00000008	 Word
+  uChar  . . . . . . . . . . . .	 0000000A	 Word
+  UnicodeChar  . . . . . . . . .	 00000000	 Word
+  AsciiChar  . . . . . . . . . .	 00000000	 Byte
+  dwControlKeyState  . . . . . .	 0000000C	 DWord
+MENU_EVENT_RECORD  . . . . . . .	 00000004
+  dwCommandId  . . . . . . . . .	 00000000	 DWord
+MOUSE_EVENT_RECORD . . . . . . .	 00000010
+  dwMousePosition  . . . . . . .	 00000000	 DWord
+  dwButtonState  . . . . . . . .	 00000004	 DWord
+  dwMouseControlKeyState . . . .	 00000008	 DWord
+  dwEventFlags . . . . . . . . .	 0000000C	 DWord
+SMALL_RECT . . . . . . . . . . .	 00000008
+  Left . . . . . . . . . . . . .	 00000000	 Word
+  Top  . . . . . . . . . . . . .	 00000002	 Word
+  Right  . . . . . . . . . . . .	 00000004	 Word
+  Bottom . . . . . . . . . . . .	 00000006	 Word
+SYSTEMTIME . . . . . . . . . . .	 00000010
+  wYear  . . . . . . . . . . . .	 00000000	 Word
+  wMonth . . . . . . . . . . . .	 00000002	 Word
+  wDayOfWeek . . . . . . . . . .	 00000004	 Word
+  wDay . . . . . . . . . . . . .	 00000006	 Word
+  wHour  . . . . . . . . . . . .	 00000008	 Word
+  wMinute  . . . . . . . . . . .	 0000000A	 Word
+  wSecond  . . . . . . . . . . .	 0000000C	 Word
+  wMilliseconds  . . . . . . . .	 0000000E	 Word
+WINDOW_BUFFER_SIZE_RECORD  . . .	 00000004
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 000001DA Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000B20 Para	  Public  'CODE'	
+
+
+Procedures, parameters, and locals:
+
+                N a m e                 Type     Value    Attr
+
+CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetFileTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapAlloc  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapCreate . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+OpenInputFile  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ParseDecimal32 . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ParseInteger32 . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+PeekConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Random32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+RandomRange  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Randomize  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadChar . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadDec  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFile . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFloat  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFromFile . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadHex  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadInt  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadKeyFlush . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadKey  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadString . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetFilePointer . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteChar  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFloat . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHexB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+izbrojiMine  . . . . . . . . . .	P Near	 00000081 _TEXT	Length= 00000260 Public STDCALL
+  LOOPxy0  . . . . . . . . . . .	L Near	 00000094 _TEXT	
+  LOOPxy1  . . . . . . . . . . .	L Near	 000000DA _TEXT	
+  LOOPxy2  . . . . . . . . . . .	L Near	 00000118 _TEXT	
+  LOOPxy3  . . . . . . . . . . .	L Near	 00000156 _TEXT	
+  LOOPxy4  . . . . . . . . . . .	L Near	 000001A0 _TEXT	
+  LOOPxy5  . . . . . . . . . . .	L Near	 000001E4 _TEXT	
+  LOOPxy6  . . . . . . . . . . .	L Near	 0000022E _TEXT	
+  LOOPxy7  . . . . . . . . . . .	L Near	 0000026C _TEXT	
+  LOOPxy8  . . . . . . . . . . .	L Near	 000002AA _TEXT	
+izracunajTrenutnoPolje1  . . . .	P Near	 000003A0 _TEXT	Length= 00000027 Public STDCALL
+izracunajTrenutnoPolje . . . . .	P Near	 00000379 _TEXT	Length= 00000027 Public STDCALL
+izracunavanje  . . . . . . . . .	P Near	 0000005F _TEXT	Length= 00000022 Public STDCALL
+  petlja . . . . . . . . . . . .	L Near	 0000006D _TEXT	
+main . . . . . . . . . . . . . .	P Near	 000006D3 _TEXT	Length= 0000044D Public STDCALL
+  POCETAK  . . . . . . . . . . .	L Near	 0000071D _TEXT	
+  loopKey  . . . . . . . . . . .	L Near	 0000072E _TEXT	
+  _if1 . . . . . . . . . . . . .	L Near	 0000073F _TEXT	
+  THEN1  . . . . . . . . . . . .	L Near	 00000748 _TEXT	
+  A0 . . . . . . . . . . . . . .	L Near	 00000761 _TEXT	
+  AX0  . . . . . . . . . . . . .	L Near	 00000766 _TEXT	
+  A1 . . . . . . . . . . . . . .	L Near	 00000771 _TEXT	
+  AX1  . . . . . . . . . . . . .	L Near	 00000776 _TEXT	
+  A2 . . . . . . . . . . . . . .	L Near	 00000781 _TEXT	
+  AX2  . . . . . . . . . . . . .	L Near	 00000786 _TEXT	
+  B0 . . . . . . . . . . . . . .	L Near	 000007A6 _TEXT	
+  BX0  . . . . . . . . . . . . .	L Near	 000007AB _TEXT	
+  B1 . . . . . . . . . . . . . .	L Near	 000007B6 _TEXT	
+  BX1  . . . . . . . . . . . . .	L Near	 000007BB _TEXT	
+  B2 . . . . . . . . . . . . . .	L Near	 000007C6 _TEXT	
+  BX2  . . . . . . . . . . . . .	L Near	 000007CB _TEXT	
+  ENDIF1 . . . . . . . . . . . .	L Near	 000007D5 _TEXT	
+  _if2 . . . . . . . . . . . . .	L Near	 000007D5 _TEXT	
+  THEN2  . . . . . . . . . . . .	L Near	 000007DE _TEXT	
+  C0 . . . . . . . . . . . . . .	L Near	 000007F7 _TEXT	
+  CX0  . . . . . . . . . . . . .	L Near	 000007FC _TEXT	
+  C1 . . . . . . . . . . . . . .	L Near	 00000807 _TEXT	
+  CX1  . . . . . . . . . . . . .	L Near	 0000080C _TEXT	
+  C2 . . . . . . . . . . . . . .	L Near	 00000817 _TEXT	
+  CX2  . . . . . . . . . . . . .	L Near	 0000081C _TEXT	
+  D0 . . . . . . . . . . . . . .	L Near	 0000083C _TEXT	
+  DX0  . . . . . . . . . . . . .	L Near	 00000841 _TEXT	
+  D1 . . . . . . . . . . . . . .	L Near	 0000084C _TEXT	
+  DX1  . . . . . . . . . . . . .	L Near	 00000851 _TEXT	
+  D2 . . . . . . . . . . . . . .	L Near	 0000085C _TEXT	
+  DX2  . . . . . . . . . . . . .	L Near	 00000861 _TEXT	
+  ENDIF2 . . . . . . . . . . . .	L Near	 0000086B _TEXT	
+  _if3 . . . . . . . . . . . . .	L Near	 0000086B _TEXT	
+  THEN3  . . . . . . . . . . . .	L Near	 00000874 _TEXT	
+  E0 . . . . . . . . . . . . . .	L Near	 0000088D _TEXT	
+  EX0  . . . . . . . . . . . . .	L Near	 00000892 _TEXT	
+  E1 . . . . . . . . . . . . . .	L Near	 0000089D _TEXT	
+  EX1  . . . . . . . . . . . . .	L Near	 000008A2 _TEXT	
+  E2 . . . . . . . . . . . . . .	L Near	 000008AD _TEXT	
+  EX2  . . . . . . . . . . . . .	L Near	 000008B2 _TEXT	
+  F0 . . . . . . . . . . . . . .	L Near	 000008D2 _TEXT	
+  FX0  . . . . . . . . . . . . .	L Near	 000008D7 _TEXT	
+  F1 . . . . . . . . . . . . . .	L Near	 000008E2 _TEXT	
+  FX1  . . . . . . . . . . . . .	L Near	 000008E7 _TEXT	
+  F2 . . . . . . . . . . . . . .	L Near	 000008F2 _TEXT	
+  FX2  . . . . . . . . . . . . .	L Near	 000008F7 _TEXT	
+  ENDIF3 . . . . . . . . . . . .	L Near	 00000901 _TEXT	
+  _if4 . . . . . . . . . . . . .	L Near	 00000901 _TEXT	
+  THEN4  . . . . . . . . . . . .	L Near	 0000090A _TEXT	
+  G0 . . . . . . . . . . . . . .	L Near	 00000923 _TEXT	
+  GX0  . . . . . . . . . . . . .	L Near	 00000928 _TEXT	
+  G1 . . . . . . . . . . . . . .	L Near	 00000933 _TEXT	
+  GX1  . . . . . . . . . . . . .	L Near	 00000938 _TEXT	
+  G2 . . . . . . . . . . . . . .	L Near	 00000943 _TEXT	
+  GX2  . . . . . . . . . . . . .	L Near	 00000948 _TEXT	
+  H0 . . . . . . . . . . . . . .	L Near	 00000968 _TEXT	
+  HX0  . . . . . . . . . . . . .	L Near	 0000096D _TEXT	
+  H1 . . . . . . . . . . . . . .	L Near	 00000978 _TEXT	
+  HX1  . . . . . . . . . . . . .	L Near	 0000097D _TEXT	
+  H2 . . . . . . . . . . . . . .	L Near	 00000988 _TEXT	
+  HX2  . . . . . . . . . . . . .	L Near	 0000098D _TEXT	
+  ENDIF4 . . . . . . . . . . . .	L Near	 00000997 _TEXT	
+  _if5 . . . . . . . . . . . . .	L Near	 00000997 _TEXT	
+  THEN5  . . . . . . . . . . . .	L Near	 0000099D _TEXT	
+  lastLoop . . . . . . . . . . .	L Near	 000009DB _TEXT	
+  lastLoop1  . . . . . . . . . .	L Near	 000009E5 _TEXT	
+  ENDIF5 . . . . . . . . . . . .	L Near	 00000A19 _TEXT	
+  _if6 . . . . . . . . . . . . .	L Near	 00000A19 _TEXT	
+  THEN6  . . . . . . . . . . . .	L Near	 00000A22 _TEXT	
+  postavi  . . . . . . . . . . .	L Near	 00000A3F _TEXT	
+  POG  . . . . . . . . . . . . .	L Near	 00000A74 _TEXT	
+  POBEDA . . . . . . . . . . . .	L Near	 00000A85 _TEXT	
+  NPOG . . . . . . . . . . . . .	L Near	 00000A9A _TEXT	
+  ukloni . . . . . . . . . . . .	L Near	 00000A9C _TEXT	
+  POG1 . . . . . . . . . . . . .	L Near	 00000AD1 _TEXT	
+  ENDIF6 . . . . . . . . . . . .	L Near	 00000AD7 _TEXT	
+  _if7 . . . . . . . . . . . . .	L Near	 00000AD7 _TEXT	
+  THEN7  . . . . . . . . . . . .	L Near	 00000ADD _TEXT	
+  ENDIF7 . . . . . . . . . . . .	L Near	 00000AF5 _TEXT	
+  lastLoop2  . . . . . . . . . .	L Near	 00000AFA _TEXT	
+  NOVAIGRA . . . . . . . . . . .	L Near	 00000B14 _TEXT	
+  KRAJ . . . . . . . . . . . . .	L Near	 00000B19 _TEXT	
+otvaranjePolja . . . . . . . . .	P Near	 000003C7 _TEXT	Length= 00000291 Public STDCALL
+  NULA . . . . . . . . . . . . .	L Near	 0000043F _TEXT	
+  nula1  . . . . . . . . . . . .	L Near	 00000482 _TEXT	
+  nula2  . . . . . . . . . . . .	L Near	 000004BF _TEXT	
+  nula3  . . . . . . . . . . . .	L Near	 000004FC _TEXT	
+  nula4  . . . . . . . . . . . .	L Near	 00000545 _TEXT	
+  nula5  . . . . . . . . . . . .	L Near	 00000588 _TEXT	
+  nula6  . . . . . . . . . . . .	L Near	 000005D1 _TEXT	
+  nula7  . . . . . . . . . . . .	L Near	 0000060E _TEXT	
+  NIJE_NULA  . . . . . . . . . .	L Near	 0000064B _TEXT	
+  NIJE_NULA1 . . . . . . . . . .	L Near	 00000657 _TEXT	
+pocetnaPozicijaKursora . . . . .	P Near	 0000002D _TEXT	Length= 00000032 Public STDCALL
+pogodjenaMina  . . . . . . . . .	P Near	 00000658 _TEXT	Length= 0000007B Public STDCALL
+  loopMx . . . . . . . . . . . .	L Near	 0000066F _TEXT	
+  loopMy . . . . . . . . . . . .	L Near	 0000066F _TEXT	
+  loopM1 . . . . . . . . . . . .	L Near	 00000697 _TEXT	
+  loopM2 . . . . . . . . . . . .	L Near	 000006B4 _TEXT	
+popuniMatricu  . . . . . . . . .	P Near	 000002E1 _TEXT	Length= 0000001A Public STDCALL
+  FORX . . . . . . . . . . . . .	L Near	 000002E5 _TEXT	
+  FORY . . . . . . . . . . . . .	L Near	 000002E5 _TEXT	
+popunjavanjeEkrana . . . . . . .	P Near	 00000000 _TEXT	Length= 0000002D Public STDCALL
+  loop2  . . . . . . . . . . . .	L Near	 00000014 _TEXT	
+  loop1  . . . . . . . . . . . .	L Near	 00000014 _TEXT	
+printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+promenaNijeOtvoreno  . . . . . .	P Near	 000002FB _TEXT	Length= 00000019 Public STDCALL
+promenaOtvoreno  . . . . . . . .	P Near	 00000314 _TEXT	Length= 00000038 Public STDCALL
+promenaZastava . . . . . . . . .	P Near	 0000034C _TEXT	Length= 0000002D Public STDCALL
+scanf  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+wsprintfA  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+ALT_MASK . . . . . . . . . . . .	Number	 00000003h   
+CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
+CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
+CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
+CTRL_MASK  . . . . . . . . . . .	Number	 0000000Ch   
+CreateFile . . . . . . . . . . .	Text   	 CreateFileA
+DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
+ENABLE_ECHO_INPUT  . . . . . . .	Number	 00000004h   
+ENABLE_LINE_INPUT  . . . . . . .	Number	 00000002h   
+ENABLE_MOUSE_INPUT . . . . . . .	Number	 00000010h   
+ENABLE_PROCESSED_INPUT . . . . .	Number	 00000001h   
+ENABLE_PROCESSED_OUTPUT  . . . .	Number	 00000001h   
+ENABLE_WINDOW_INPUT  . . . . . .	Number	 00000008h   
+ENABLE_WRAP_AT_EOL_OUTPUT  . . .	Number	 00000002h   
+ENHANCED_KEY . . . . . . . . . .	Number	 00000100h   
+FALSE  . . . . . . . . . . . . .	Number	 00000000h   
+FILE_APPEND_DATA . . . . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_ARCHIVE . . . . .	Number	 00000020h   
+FILE_ATTRIBUTE_COMPRESSED  . . .	Number	 00000800h   
+FILE_ATTRIBUTE_DEVICE  . . . . .	Number	 00000040h   
+FILE_ATTRIBUTE_DIRECTORY . . . .	Number	 00000010h   
+FILE_ATTRIBUTE_ENCRYPTED . . . .	Number	 00004000h   
+FILE_ATTRIBUTE_HIDDEN  . . . . .	Number	 00000002h   
+FILE_ATTRIBUTE_NORMAL  . . . . .	Number	 00000080h   
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED .	Number	 00002000h   
+FILE_ATTRIBUTE_OFFLINE . . . . .	Number	 00001000h   
+FILE_ATTRIBUTE_READONLY  . . . .	Number	 00000001h   
+FILE_ATTRIBUTE_REPARSE_POINT . .	Number	 00000400h   
+FILE_ATTRIBUTE_SPARSE_FILE . . .	Number	 00000200h   
+FILE_ATTRIBUTE_SYSTEM  . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_TEMPORARY . . . .	Number	 00000100h   
+FILE_BEGIN . . . . . . . . . . .	Number	 00000000h   
+FILE_CURRENT . . . . . . . . . .	Number	 00000001h   
+FILE_DELETE_CHILD  . . . . . . .	Number	 00000040h   
+FILE_END . . . . . . . . . . . .	Number	 00000002h   
+FILE_READ_DATA . . . . . . . . .	Number	 00000001h   
+FILE_SHARE_DELETE  . . . . . . .	Number	 00000004h   
+FILE_SHARE_READ  . . . . . . . .	Number	 00000001h   
+FILE_SHARE_WRITE . . . . . . . .	Number	 00000002h   
+FILE_WRITE_DATA  . . . . . . . .	Number	 00000002h   
+FOCUS_EVENT  . . . . . . . . . .	Number	 00000010h   
+FORMAT_MESSAGE_ALLOCATE_BUFFER .	Number	 00000100h   
+FORMAT_MESSAGE_FROM_SYSTEM . . .	Number	 00001000h   
+FormatMessage  . . . . . . . . .	Text   	 FormatMessageA
+GENERIC_ALL  . . . . . . . . . .	Number	 10000000h   
+GENERIC_EXECUTE  . . . . . . . .	Number	 20000000h   
+GENERIC_READ . . . . . . . . . .	Number	 -80000000h   
+GENERIC_WRITE  . . . . . . . . .	Number	 40000000h   
+GetCommandLine . . . . . . . . .	Text   	 GetCommandLineA
+HANDLE . . . . . . . . . . . . .	Text   	 DWORD
+HEAP_GENERATE_EXCEPTIONS . . . .	Number	 00000004h   
+HEAP_GROWABLE  . . . . . . . . .	Number	 00000002h   
+HEAP_NO_SERIALIZE  . . . . . . .	Number	 00000001h   
+HEAP_REALLOC_IN_PLACE_ONLY . . .	Number	 00000010h   
+HEAP_ZERO_MEMORY . . . . . . . .	Number	 00000008h   
+IDABORT  . . . . . . . . . . . .	Number	 00000003h   
+IDCANCEL . . . . . . . . . . . .	Number	 00000002h   
+IDCLOSE  . . . . . . . . . . . .	Number	 00000008h   
+IDCONTINUE . . . . . . . . . . .	Number	 0000000Bh   
+IDHELP . . . . . . . . . . . . .	Number	 00000009h   
+IDIGNORE . . . . . . . . . . . .	Number	 00000005h   
+IDNO . . . . . . . . . . . . . .	Number	 00000007h   
+IDOK . . . . . . . . . . . . . .	Number	 00000001h   
+IDRETRY  . . . . . . . . . . . .	Number	 00000004h   
+IDTIMEOUT  . . . . . . . . . . .	Number	 00007D00h   
+IDTRYAGAIN . . . . . . . . . . .	Number	 0000000Ah   
+IDYES  . . . . . . . . . . . . .	Number	 00000006h   
+INVALID_HANDLE_VALUE . . . . . .	Number	 -00000001h   
+KBDOWN_FLAG  . . . . . . . . . .	Number	 00000001h   
+KEY_EVENT  . . . . . . . . . . .	Number	 00000001h   
+KEY_MASKS  . . . . . . . . . . .	Number	 0000001Fh   
+LEFT_ALT_PRESSED . . . . . . . .	Number	 00000002h   
+LEFT_CTRL_PRESSED  . . . . . . .	Number	 00000008h   
+MB_ABORTRETRYIGNORE  . . . . . .	Number	 00000002h   
+MB_APPLMODAL . . . . . . . . . .	Number	 00000000h   
+MB_CANCELTRYCONTINUE . . . . . .	Number	 00000006h   
+MB_DEFBUTTON1  . . . . . . . . .	Number	 00000000h   
+MB_DEFBUTTON2  . . . . . . . . .	Number	 00000100h   
+MB_DEFBUTTON3  . . . . . . . . .	Number	 00000200h   
+MB_DEFBUTTON4  . . . . . . . . .	Number	 00000300h   
+MB_HELP  . . . . . . . . . . . .	Number	 00004000h   
+MB_ICONASTERISK  . . . . . . . .	Number	 00000040h   
+MB_ICONERROR . . . . . . . . . .	Number	 00000010h   
+MB_ICONEXCLAMATION . . . . . . .	Number	 00000030h   
+MB_ICONHAND  . . . . . . . . . .	Number	 00000010h   
+MB_ICONINFORMATION . . . . . . .	Number	 00000040h   
+MB_ICONQUESTION  . . . . . . . .	Number	 00000020h   
+MB_ICONSTOP  . . . . . . . . . .	Number	 00000010h   
+MB_ICONWARNING . . . . . . . . .	Number	 00000030h   
+MB_OKCANCEL  . . . . . . . . . .	Number	 00000001h   
+MB_OK  . . . . . . . . . . . . .	Number	 00000000h   
+MB_RETRYCANCEL . . . . . . . . .	Number	 00000005h   
+MB_SYSTEMMODAL . . . . . . . . .	Number	 00001000h   
+MB_TASKMODAL . . . . . . . . . .	Number	 00002000h   
+MB_USERICON  . . . . . . . . . .	Number	 00000080h   
+MB_YESNOCANCEL . . . . . . . . .	Number	 00000003h   
+MB_YESNO . . . . . . . . . . . .	Number	 00000004h   
+MENU_EVENT . . . . . . . . . . .	Number	 00000008h   
+MOUSE_EVENT  . . . . . . . . . .	Number	 00000002h   
+MessageBox . . . . . . . . . . .	Text   	 MessageBoxA
+NULL . . . . . . . . . . . . . .	Number	 00000000h   
+NUMLOCK_ON . . . . . . . . . . .	Number	 00000020h   
+OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
+OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
+PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
+RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h   
+RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
+ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
+ReadConsole  . . . . . . . . . .	Text   	 ReadConsoleA
+SCROLLLOCK_ON  . . . . . . . . .	Number	 00000040h   
+SHIFT_MASK . . . . . . . . . . .	Number	 00000010h   
+SHIFT_PRESSED  . . . . . . . . .	Number	 00000010h   
+STD_ERROR_HANDLE . . . . . . . .	Number	 -0000000Ch   
+STD_INPUT_HANDLE . . . . . . . .	Number	 -0000000Ah   
+STD_OUTPUT_HANDLE  . . . . . . .	Number	 -0000000Bh   
+SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
+TAB  . . . . . . . . . . . . . .	Number	 00000009h   
+TRUE . . . . . . . . . . . . . .	Number	 00000001h   
+TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
+VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
+VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
+VK_BACK  . . . . . . . . . . . .	Number	 00000008h   
+VK_CANCEL  . . . . . . . . . . .	Number	 00000003h   
+VK_CAPITAL . . . . . . . . . . .	Number	 00000014h   
+VK_CLEAR . . . . . . . . . . . .	Number	 0000000Ch   
+VK_CONTROL . . . . . . . . . . .	Number	 00000011h   
+VK_DECIMAL . . . . . . . . . . .	Number	 0000006Eh   
+VK_DELETE  . . . . . . . . . . .	Number	 0000002Eh   
+VK_DIVIDE  . . . . . . . . . . .	Number	 0000006Fh   
+VK_DOWN  . . . . . . . . . . . .	Number	 00000028h   
+VK_END . . . . . . . . . . . . .	Number	 00000023h   
+VK_ESCAPE  . . . . . . . . . . .	Number	 0000001Bh   
+VK_EXECUTE . . . . . . . . . . .	Number	 0000002Bh   
+VK_F10 . . . . . . . . . . . . .	Number	 00000079h   
+VK_F11 . . . . . . . . . . . . .	Number	 0000007Ah   
+VK_F12 . . . . . . . . . . . . .	Number	 0000007Bh   
+VK_F13 . . . . . . . . . . . . .	Number	 0000007Ch   
+VK_F14 . . . . . . . . . . . . .	Number	 0000007Dh   
+VK_F15 . . . . . . . . . . . . .	Number	 0000007Eh   
+VK_F16 . . . . . . . . . . . . .	Number	 0000007Fh   
+VK_F17 . . . . . . . . . . . . .	Number	 00000080h   
+VK_F18 . . . . . . . . . . . . .	Number	 00000081h   
+VK_F19 . . . . . . . . . . . . .	Number	 00000082h   
+VK_F1  . . . . . . . . . . . . .	Number	 00000070h   
+VK_F20 . . . . . . . . . . . . .	Number	 00000083h   
+VK_F21 . . . . . . . . . . . . .	Number	 00000084h   
+VK_F22 . . . . . . . . . . . . .	Number	 00000085h   
+VK_F23 . . . . . . . . . . . . .	Number	 00000086h   
+VK_F24 . . . . . . . . . . . . .	Number	 00000087h   
+VK_F2  . . . . . . . . . . . . .	Number	 00000071h   
+VK_F3  . . . . . . . . . . . . .	Number	 00000072h   
+VK_F4  . . . . . . . . . . . . .	Number	 00000073h   
+VK_F5  . . . . . . . . . . . . .	Number	 00000074h   
+VK_F6  . . . . . . . . . . . . .	Number	 00000075h   
+VK_F7  . . . . . . . . . . . . .	Number	 00000076h   
+VK_F8  . . . . . . . . . . . . .	Number	 00000077h   
+VK_F9  . . . . . . . . . . . . .	Number	 00000078h   
+VK_HELP  . . . . . . . . . . . .	Number	 0000002Fh   
+VK_HOME  . . . . . . . . . . . .	Number	 00000024h   
+VK_INSERT  . . . . . . . . . . .	Number	 0000002Dh   
+VK_LBUTTON . . . . . . . . . . .	Number	 00000001h   
+VK_LCONTROL  . . . . . . . . . .	Number	 000000A2h   
+VK_LEFT  . . . . . . . . . . . .	Number	 00000025h   
+VK_LMENU . . . . . . . . . . . .	Number	 000000A4h   
+VK_LSHIFT  . . . . . . . . . . .	Number	 000000A0h   
+VK_MENU  . . . . . . . . . . . .	Number	 00000012h   
+VK_MULTIPLY  . . . . . . . . . .	Number	 0000006Ah   
+VK_NEXT  . . . . . . . . . . . .	Number	 00000022h   
+VK_NUMLOCK . . . . . . . . . . .	Number	 00000090h   
+VK_NUMPAD0 . . . . . . . . . . .	Number	 00000060h   
+VK_NUMPAD1 . . . . . . . . . . .	Number	 00000061h   
+VK_NUMPAD2 . . . . . . . . . . .	Number	 00000062h   
+VK_NUMPAD3 . . . . . . . . . . .	Number	 00000063h   
+VK_NUMPAD4 . . . . . . . . . . .	Number	 00000064h   
+VK_NUMPAD5 . . . . . . . . . . .	Number	 00000065h   
+VK_NUMPAD6 . . . . . . . . . . .	Number	 00000066h   
+VK_NUMPAD7 . . . . . . . . . . .	Number	 00000067h   
+VK_NUMPAD8 . . . . . . . . . . .	Number	 00000068h   
+VK_NUMPAD9 . . . . . . . . . . .	Number	 00000069h   
+VK_PAUSE . . . . . . . . . . . .	Number	 00000013h   
+VK_PRINT . . . . . . . . . . . .	Number	 0000002Ah   
+VK_PRIOR . . . . . . . . . . . .	Number	 00000021h   
+VK_RBUTTON . . . . . . . . . . .	Number	 00000002h   
+VK_RCONTROL  . . . . . . . . . .	Number	 000000A3h   
+VK_RETURN  . . . . . . . . . . .	Number	 0000000Dh   
+VK_RIGHT . . . . . . . . . . . .	Number	 00000027h   
+VK_RMENU . . . . . . . . . . . .	Number	 000000A5h   
+VK_RSHIFT  . . . . . . . . . . .	Number	 000000A1h   
+VK_SCROLL  . . . . . . . . . . .	Number	 00000091h   
+VK_SEPARATER . . . . . . . . . .	Number	 0000006Ch   
+VK_SHIFT . . . . . . . . . . . .	Number	 00000010h   
+VK_SNAPSHOT  . . . . . . . . . .	Number	 0000002Ch   
+VK_SPACE . . . . . . . . . . . .	Number	 00000020h   
+VK_SUBTRACT  . . . . . . . . . .	Number	 0000006Dh   
+VK_TAB . . . . . . . . . . . . .	Number	 00000009h   
+VK_UP  . . . . . . . . . . . . .	Number	 00000026h   
+WINDOW_BUFFER_SIZE_EVENT . . . .	Number	 00000004h   
+WriteConsoleOutputCharacter  . .	Text   	 WriteConsoleOutputCharacterA
+WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
+black  . . . . . . . . . . . . .	Number	 00000000h   
+blue . . . . . . . . . . . . . .	Number	 00000001h   
+brown  . . . . . . . . . . . . .	Number	 00000006h   
+captionG . . . . . . . . . . . .	Byte	 000000BC _DATA	
+captionNG  . . . . . . . . . . .	Byte	 000000CA _DATA	
+captionQ . . . . . . . . . . . .	Byte	 000000B4 _DATA	
+captionWin . . . . . . . . . . .	Byte	 000000D5 _DATA	
+cellsWritten . . . . . . . . . .	DWord	 00000004 _DATA	
+counter  . . . . . . . . . . . .	Byte	 000000E1 _DATA	
+cyan . . . . . . . . . . . . . .	Number	 00000003h   
+dataX  . . . . . . . . . . . . .	Byte	 000000E2 _DATA	
+dataY  . . . . . . . . . . . . .	Byte	 000000E3 _DATA	
+exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
+gameoverMsg  . . . . . . . . . .	Byte	 00000044 _DATA	
+gray . . . . . . . . . . . . . .	Number	 00000008h   
+green  . . . . . . . . . . . . .	Number	 00000002h   
+karakterPrazan . . . . . . . . .	Number	 000000B0h   
+kursorBoja . . . . . . . . . . .	Number	 0000000Eh   
+kursorXX . . . . . . . . . . . .	Byte	 000000E4 _DATA	
+kursorX  . . . . . . . . . . . .	Byte	 000000DC _DATA	
+kursorYY . . . . . . . . . . . .	Byte	 000000E5 _DATA	
+kursorY  . . . . . . . . . . . .	Byte	 000000DD _DATA	
+lightBlue  . . . . . . . . . . .	Number	 00000009h   
+lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
+lightGray  . . . . . . . . . . .	Number	 00000007h   
+lightGreen . . . . . . . . . . .	Number	 0000000Ah   
+lightMagenta . . . . . . . . . .	Number	 0000000Dh   
+lightRed . . . . . . . . . . . .	Number	 0000000Ch   
+magenta  . . . . . . . . . . . .	Number	 00000005h   
+matricaMinaBroj  . . . . . . . .	Byte	 00000138 _DATA	
+matricaMinaPodatak . . . . . . .	Byte	 00000189 _DATA	
+matricaMina  . . . . . . . . . .	Byte	 000000E7 _DATA	
+minaBoja . . . . . . . . . . . .	Byte	 000000DF _DATA	
+minaKarakter . . . . . . . . . .	Byte	 000000E0 _DATA	
+newGameMsg . . . . . . . . . . .	Byte	 00000067 _DATA	
+outHandle  . . . . . . . . . . .	DWord	 00000000 _DATA	
+pogodjene  . . . . . . . . . . .	Byte	 000000E6 _DATA	
+pozadinaBoja . . . . . . . . . .	Number	 0000000Fh   
+questionMsg  . . . . . . . . . .	Byte	 00000024 _DATA	
+red  . . . . . . . . . . . . . .	Number	 00000004h   
+scrSize  . . . . . . . . . . . .	COORD	 00000008 _DATA	
+titleStr . . . . . . . . . . . .	Byte	 00000010 _DATA	
+trenutnoPolje  . . . . . . . . .	Byte	 000000DE _DATA	
+white  . . . . . . . . . . . . .	Number	 0000000Fh   
+winMsg . . . . . . . . . . . . .	Byte	 0000008C _DATA	
+windowRect . . . . . . . . . . .	SMALL_RECT  0000001C _DATA	
+wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
+xyPos  . . . . . . . . . . . . .	COORD	 0000000C _DATA	
+yellow . . . . . . . . . . . . .	Number	 0000000Eh   
+zastavaBoja  . . . . . . . . . .	Number	 00000004h   
+
+	   0 Warnings
+	   0 Errors
