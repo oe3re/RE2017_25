@@ -18,3 +18,4 @@ Igrica se završava kada se otvore sva polja na kojima nema mine i označe sva p
 minama. Ukoliko se otvori polje na kome se nalazi mina, takođe se završava igrica. Pritiskom
 tastera ESC omogu¢iti prekid programa.
 
+Više na: http://tnt.etf.bg.ac.rs/~oe3re/Projekti/Projekti_2017.pdf
